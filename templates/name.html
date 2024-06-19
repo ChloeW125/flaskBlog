@@ -1,0 +1,30 @@
+<!-- Tell code to use the base.html file -->
+{% extends 'base.html' %}
+
+<!-- If name exists,  -->
+{% if name %}
+    <h1>Hello {{ name }}!</h1>
+{% else %}
+    <h1>What's your name?</h1>
+    <br/>
+    <!-- Add the form into the page -->
+    <form method="POST">
+        <!-- Created CSRF token -->
+        {{ form.hidden_tag() }}
+
+        <!-- Add label for the name field -->
+        {{ form.name.label }}
+        {{ form.name() }}
+        <br/>
+        <!-- Add the submit button -->
+        {{ form.submit() }}
+
+    </form>
+
+{% endif %}
+
+{% block content %}
+
+<h1>What's Your Name?</h1>
+
+{% endblock %}

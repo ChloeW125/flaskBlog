@@ -1,0 +1,8 @@
+
+{% extends 'base.html' %}
+
+{% block content %}
+<!-- Pass in the username, pass uppercase filter to display information in a certain way -->
+<h1>Hello {{ username|capitalize }}</h1>
+
+{% endblock %}

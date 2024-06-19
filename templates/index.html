@@ -1,3 +1,31 @@
+<!-- Tell code to use the base.html filter -->
+{% extends 'base.html' %}
+
+{% block content %}
+
 <h1>Hello World!</h1>
 
 <p>This is my blog!</p>
+
+<p>My name is {{ first_name }}</p>
+
+<!-- By default, flask and jinja will not allow vars holding html content to be directly displayed, as their html could be nefarious.  -->
+<!-- However, if we ourselves want to display vars using html content, we can use the "safe" filter to tell the program that the html inputted is indeed safe and that it can display it as an html line  -->
+<p>{{ stuff|safe }}</p>
+
+<h3>Favourite Pizza:</h3>
+
+{% for topping in pizza %}
+
+    {% if topping == 41 %}
+        {{ topping + 100 }}<br/>
+    {% else %}
+        {{ topping }}<br/>
+    {% endif %}
+{% endfor %}
+
+<!-- <br/><br/> -->
+<!-- Access the first element in the pizza list -->
+<!-- {{ pizza.0 }} -->
+
+{% endblock %}
