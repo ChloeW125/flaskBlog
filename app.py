@@ -1,21 +1,59 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, flash
 from flask_wtf import FlaskForm
 #Import fields to be able to build form
 from wtforms import StringField, SubmitField
 #Import validators to validate the string input (this validator in particular will validate the string)
 from wtforms.validators import DataRequired
+#Import db and datetime so we can track the time of every entry
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 
 #Create a flask instance
+#Create extension to the db
+db = SQLAlchemy()
 #__name__ helps flask find files in the directory
 app = Flask(__name__)
 #Create a secret key (to create a CRSF token) for the form to make sure that hackers cannot hijack the form
 app.config['SECRET_KEY'] = "56y32888"
+#Add the databaase to the app (where URI points to where our database is) 
+#Old sqllite db
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db' #Sqlite used here, can change to other dbs by adjusting the value
+#New mysql
+#Formatting: app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://username:password@localhost(or server)/db_name' 
+#pymysql is the new "connector"
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:56y32888@localhost/our_users' 
+#Initialize the database
+db.init_app(app)
+
+#Create a model (defines what is saved in the database)
+class Users(db.Model):
+    #Keep track of id (since everyone has a unique id, will make it easy to delete specific entries later), name, email, and date added
+    #Define data type in each column in the brackets, specify validation + features for each column
+    id = db.Column(db.Integer, primary_key = True) #By using primary keys, each entry will automatically be assigned a unique id, which is exactly what we want
+    name = db.Column(db.String(200), nullable=False) #Nullable=false means that the value for the name var cannot be empty
+    email = db.Column(db.String(120), nullable=False, unique=True) #Set unique as true because we want everyone to have a unique email
+    date_added = db.Column(db.DateTime, default=datetime.now)
+
+    #Create a string to define what will show up on the screen
+    def __repr__(self):
+        return '<Name %r>' % self.name
+
+#Create a user form class
+class UserForm(FlaskForm):
+    #Define the fields that we want using vars
+    name = StringField("Name", validators=[DataRequired()])
+    email = StringField("Email", validators=[DataRequired()])
+    submit = SubmitField("Submit")
 
 #Create form class
 class NamerForm(FlaskForm):
     #Define the fields that we want using vars
     name = StringField("What's Your Name", validators=[DataRequired()])
     submit = SubmitField("Submit")
+
+#Create table for db
+with app.app_context():
+    db.create_all()
 
 #Create a route so that the website (specifically the home page) can be accessed (via URL) 
 @app.route('/')
@@ -29,6 +67,32 @@ def index():
     pizza = ["Pepperoni", "Cheese", 41]
     #Program will go to the template folder and find the right file to display
     return render_template("index.html", first_name=first_name, stuff=stuff, pizza=pizza)
+
+@app.route('/user/add', methods=['GET', 'POST'])
+def add_user():
+    name = None
+    #Create a form to pass into the display using the UserForm class created earlier
+    form = UserForm()
+    #If someone submits the form, assign the inputted name value to the name variable
+    if form.validate_on_submit():
+        #Make sure that each user has a different valid email
+        #This will go over all existing emails and find the first email entry with the same email as the one inputted
+        user = Users.query.filter_by(email=form.email.data).first()
+        #Is there is no existing email in the database, add the inputted name and email. Otherwise, don't
+        if user is None:
+            user = Users(name=form.name.data, email=form.email.data)
+            db.session.add(user)
+            db.session.commit()
+        #Pass the inputted name as a var into the function so it's value can be used later
+        name = form.name.data
+        #Clear the form
+        form.name.data = ''
+        form.email.data = ''
+        #Implement flash function to make flash message pop-up on the screen
+        flash("User added successfully!")
+    #Variable to hold all the values inside the database (to be used to display the info in the database)
+    our_users = Users.query.order_by(Users.date_added)
+    return render_template("add_user.html", form=form, name=name, our_users=our_users)
 
 #<> allows us to pass a name
 @app.route('/user/<name>')
@@ -49,6 +113,9 @@ def name():
     if form.validate_on_submit():
         name = form.name.data
         form.name.data = ''
+        #Implement flash function to make flash message pop-up on the screen
+        flash("Form submitted successfully!")
+
     #Pass name and from vars onto the page
     return render_template("name.html", name=name, form=form)
 

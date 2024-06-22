@@ -14,19 +14,21 @@
 
 <!-- If the name var exists,  execute the following -->
 {% if name %}
-    <h1>Hello {{ name }}!</h1>
-    <br/>
-    <!-- Display an image (resize it to make sure it fits the page)-->
-    <img src="{{ url_for('static', filename='images/flowers.jpg')}}" width=1100>
-    <br/><br/>
-    <p id="demo">This is stuff....</p> 
+<h1>User Added!</h1>
+<table class="table table-hover table-bordered table-striped">
+    {% for our_user in our_users %}
+    <tr>
+        <td>{{ our_user.id }}. {{ our_user.name }} - {{ our_user.email }} <br/> </td>
+    </tr>
+{% endfor %}
 
-    <!-- Call javascript files -->
-<script src="{{ url_for('static', filename='js/myfile.js')}}"></script>"
+</table>
 
 {% else %}
-    <h1>What's your name?</h1>
+    <h1>User List:</h1>
     <br/>
+    <!-- Styling -->
+    <div class="shadow p-3 mb-5 bg-body-tertiary rounded">
     <!-- Add the form into the page -->
     <form method="POST">
         <!-- Created CSRF token -->
@@ -36,10 +38,27 @@
         {{ form.name.label(class="form-label") }}
         {{ form.name(class="form-control") }}
         <br/>
+
+        {{ form.email.label(class="form-label") }}
+        {{ form.email(class="form-control") }}
+        <br/>
         <!-- Add the submit button -->
         {{ form.submit(class="btn btn-secondary") }}
 
     </form>
+</div>
+
+<br/><br/><br/>
+<!-- Make a table to hold the data -->
+<table class="table table-hover table-bordered table-striped">
+    {% for our_user in our_users %}
+    <tr>
+        <td>{{ our_user.id }}. {{ our_user.name }} - {{ our_user.email }} <br/> </td>
+    </tr>
+{% endfor %}
+
+</table>
+    
 
 {% endif %}
 

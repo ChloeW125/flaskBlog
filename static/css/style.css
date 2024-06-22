@@ -1,0 +1,16 @@
+/* Basic css style sheet for the web app */
+
+h1 {
+    color: darkblue;
+    font-size:60px
+}
+
+body {
+    background: #f4f4f4
+}
+
+/* Call image via id */
+#demo {
+    font-size: 12px;
+    color: darkblue;
+}
