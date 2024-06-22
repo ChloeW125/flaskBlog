@@ -14,57 +14,54 @@
 
 <!-- If the name var exists,  execute the following -->
 {% if name %}
-<h1>User Added!</h1>
+<h1>Update User</h1>
 <table class="table table-hover table-bordered table-striped">
     {% for our_user in our_users %}
     <tr>
-        <td>{{ our_user.id }}. <a href="{{ url_for('update', id=our_user.id) }}">{{ our_user.name }}</a> - {{ our_user.email }} - {{ our_user.favourite_colour }} - <a href="{{ url_for('delete', id=our_user.id) }}">Delete</a></td>
+        <td>{{ our_user.id }}. {{ our_user.name }} - {{ our_user.email }} - {{ our_user.favourite_colour }} </td>
     </tr>
 {% endfor %}
 
 </table>
 
 {% else %}
-    <h1>User List:</h1>
+    <h1>Update User</h1>
     <br/>
     <!-- Styling -->
     <div class="shadow p-3 mb-5 bg-body-tertiary rounded">
     <!-- Add the form into the page -->
-    <form method="POST">
+    <!-- Make sure url of form changes according to the number of the user that was clicked on -->
+    <form action="/update/{{ name_to_update.id }}" method="POST">
         <!-- Created CSRF token -->
         {{ form.hidden_tag() }}
 
         <!-- Add label for the name field -->
         {{ form.name.label(class="form-label") }}
-        {{ form.name(class="form-control") }}
+        <!-- Fill up form automatically with previous user information by giving the input a pre-existing value (which is the previous user info) -->
+        {{ form.name(class="form-control", value=name_to_update.name) }}
         <br/>
 
         {{ form.email.label(class="form-label") }}
-        {{ form.email(class="form-control") }}
+        <!-- Fill up form automatically with previous user information by giving the input a pre-existing value (which is the previous user info) -->
+        {{ form.email(class="form-control", value=name_to_update.email) }}
         <br/>
 
         {{ form.favourite_colour.label(class="form-label") }}
-        {{ form.favourite_colour(class="form-control") }}
+        <!-- Fill up form automatically with previous user information by giving the input a pre-existing value (which is the previous user info) -->
+        {{ form.favourite_colour(class="form-control", value=name_to_update.favourite_colour) }}
         <br/>
 
         <!-- Add the submit button -->
+        <!-- Double check -->
         {{ form.submit(class="btn btn-secondary") }}
-
+        <!-- Add another link to delete this user -->
+        <a href="{{ url_for('delete', id=id)}}" class="btn btn-danger">Delete</a>
     </form>
 </div>
 
 <br/><br/><br/>
-<!-- Make a table to hold the data -->
-<table class="table table-hover table-bordered table-striped">
-    {% for our_user in our_users %}
-    <tr>
-        <!-- Add link to go to update page to update user info. Bring info about id of user along so that it can be used later for updating the database -->
-        <td>{{ our_user.id }}. <a href="{{ url_for('update', id=our_user.id) }}">{{ our_user.name }}</a> - {{ our_user.email }} - {{ our_user.favourite_colour}} - <a href="{{ url_for('delete', id=our_user.id) }}">Delete</a> </td>
-    </tr>
-{% endfor %}
 
 </table>
-    
 
 {% endif %}
 
