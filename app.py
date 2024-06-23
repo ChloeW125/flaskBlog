@@ -1,13 +1,15 @@
 from flask import Flask, render_template, flash, request
 from flask_wtf import FlaskForm
 #Import fields to be able to build form
-from wtforms import StringField, SubmitField
+from wtforms import StringField, SubmitField, PasswordField, BooleanField, ValidationError
 #Import validators to validate the string input (this validator in particular will validate the string)
-from wtforms.validators import DataRequired
+from wtforms.validators import DataRequired, EqualTo, Length
 #Import db and datetime so we can track the time of every entry
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from datetime import datetime
+from datetime import datetime, date
+#Import werkzeug to hash passwords
+from werkzeug.security import generate_password_hash, check_password_hash
 
 #Create a flask instance
 #Create extension to the db
@@ -28,6 +30,17 @@ db.init_app(app)
 #Migrate app with database
 migrate = Migrate(app, db)
 
+# Create a blog post model
+class Posts(db.Model):
+    # Define what to save in this model
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255))
+    content = db.Column(db.Text)
+    author = db.Column(db.String(255))
+    date_posted = db.Column(db.DateTime, default=datetime.now())
+    # Slug will adjust text in url for each blog post
+    slug = db.Column(db.String(255))
+
 #Create a model (defines what is saved in the database)
 class Users(db.Model):
     #Keep track of id (since everyone has a unique id, will make it easy to delete specific entries later), name, email, and date added
@@ -37,6 +50,25 @@ class Users(db.Model):
     email = db.Column(db.String(120), nullable=False, unique=True) #Set unique as true because we want everyone to have a unique email
     favourite_colour = db.Column(db.String(120))
     date_added = db.Column(db.DateTime, default=datetime.now)
+    #Implement password input section for input
+    password_hash = db.Column(db.String(128))
+
+    #Create password properties
+    #Create functions to hash password and check hash to make sure that it matches up with the password
+    @property
+    def password(self):
+        #Raise attribute error because we don't want the password to be given out, instead we can give out the password hash
+        raise AttributeError('Password is not a readable attribute!')
+    
+    @password.setter
+    def password(self, password):
+        #Take whatever is in the password field and generate a password hash for that password
+        self.password_hash = generate_password_hash(password)
+
+    # Check to make sure that the hash goes with the password and vice versa
+    def verify_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
 
     #Create a string to define what will show up on the screen
     def __repr__(self):
@@ -48,12 +80,21 @@ class UserForm(FlaskForm):
     name = StringField("Name", validators=[DataRequired()])
     email = StringField("Email", validators=[DataRequired()])
     favourite_colour = StringField("Favourite Colour")
+    password_hash = PasswordField('Password', validators=[DataRequired(), EqualTo('password_hash2', message='Passwords must match!')])
+    password_hash2 = PasswordField('Confirm Password', validators=[DataRequired()])
     submit = SubmitField("Submit")
 
-#Create form class
+#Create name form class
 class NamerForm(FlaskForm):
     #Define the fields that we want using vars
     name = StringField("What's Your Name", validators=[DataRequired()])
+    submit = SubmitField("Submit")
+
+#Create password form class
+class PasswordForm(FlaskForm):
+    #Define the fields that we want using vars
+    email = StringField("What's Your Email?", validators=[DataRequired()])
+    password_hash = PasswordField("What's Your Password?", validators=[DataRequired()])
     submit = SubmitField("Submit")
 
 #Create table for db
@@ -83,9 +124,11 @@ def add_user():
         #Make sure that each user has a different valid email
         #This will go over all existing emails and find the first email entry with the same email as the one inputted
         user = Users.query.filter_by(email=form.email.data).first()
-        #Is there is no existing email in the database, add the inputted name and email. Otherwise, don't
+        #Is there is no existing email in the database, add the inputted name, email, etc.. Otherwise, don't
         if user is None:
-            user = Users(name=form.name.data, email=form.email.data, favourite_colour=form.favourite_colour.data)
+            #Hash the password submitted to the form
+            hashed_pw = generate_password_hash(form.password_hash.data, "pbkdf2:sha256:600000")
+            user = Users(name=form.name.data, email=form.email.data, favourite_colour=form.favourite_colour.data, password_hash=hashed_pw)
             db.session.add(user)
             db.session.commit()
         #Pass the inputted name as a var into the function so it's value can be used later
@@ -94,6 +137,7 @@ def add_user():
         form.name.data = ''
         form.email.data = ''
         form.favourite_colour.data = ''
+        form.password_hash.data = ''
         #Implement flash function to make flash message pop-up on the screen
         flash("User added successfully!")
     #Variable to hold all the values inside the database (to be used to display the info in the database)
@@ -124,6 +168,35 @@ def name():
 
     #Pass name and from vars onto the page
     return render_template("name.html", name=name, form=form)
+
+#Create password test page
+#Give the route some methods to allow the form to get and post information into/out of the form
+@app.route('/test_pw', methods=['GET', 'POST'])
+def test_pw():
+    #Set email and password as none right now because when the page first opens the user has not entered their name yet. But the value of this var will change after the user enters in their name in the form
+    email = None
+    password = None
+    pw_to_check = None
+    passed = None
+    #Pass in the form that we want to use to the webpage
+    form = PasswordForm()
+    #Validate form
+    #If someone submits the form, assign the inputted name value to the name variable
+    if form.validate_on_submit():
+        email = form.email.data
+        password = form.password_hash.data
+        #Clear the form
+        form.email.data = ''
+        form.password_hash.data = ''
+
+        # In the database, look up the user with the email that we are looking for (and return the first result if it already exists)
+        pw_to_check = Users.query.filter_by(email=email).first()
+
+        # Check if the hashed password in the database is the same as the user's inputted password (i.e. if the right password was entered or not), return boolean value
+        passed = check_password_hash(pw_to_check.password_hash, password)
+
+    #Pass name and from vars onto the page
+    return render_template("test_pw.html", email=email, password=password, pw_to_check=pw_to_check, passed=passed, form=form)
 
 # Create new page to update database records
 # Pass in the id of the entry we want to update
@@ -192,6 +265,13 @@ def page_not_found(e):
 def page_not_found(e):
     #Display the code outlined in the 500.html file, 500 at the end of this line indicartes the type of error being handled
     return render_template("500.html"), 500
+
+# Create a web page that will return JSON (can use to build API)
+@app.route('/date')
+def get_current_date():
+    # Python dictionaries will automatically be converted into JSON in flask
+    # Return JSON with date info
+    return {"Date": date.today()}
 
 #Run app
 if __name__ == "__main__":
