@@ -1,4 +1,4 @@
-from flask import Flask, render_template, flash, request
+from flask import Flask, render_template, flash, request, redirect, url_for
 from flask_wtf import FlaskForm
 #Import fields to be able to build form
 from wtforms import StringField, SubmitField, PasswordField, BooleanField, ValidationError
@@ -10,6 +10,8 @@ from flask_migrate import Migrate
 from datetime import datetime, date
 #Import werkzeug to hash passwords
 from werkzeug.security import generate_password_hash, check_password_hash
+# Import widgets for the forms
+from wtforms.widgets import TextArea
 
 #Create a flask instance
 #Create extension to the db
@@ -20,7 +22,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = "56y32888"
 #Add the databaase to the app (where URI points to where our database is) 
 #Old sqllite db
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db' #Sqlite used here, can change to other dbs by adjusting the value
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db' #Sqlite used here, can change to other dbs by adjusting the value
 #New mysql
 #Formatting: app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://username:password@localhost(or server)/db_name' 
 #pymysql is the new "connector"
@@ -40,6 +42,16 @@ class Posts(db.Model):
     date_posted = db.Column(db.DateTime, default=datetime.now())
     # Slug will adjust text in url for each blog post
     slug = db.Column(db.String(255))
+
+# Create a posts form
+class PostForm(FlaskForm):
+    # Fields in the form
+    title = StringField("Title", validators=[DataRequired()])
+    # TextArea widget to make large text box for content
+    content = StringField("Content", validators=[DataRequired()], widget=TextArea())
+    author = StringField("Author", validators=[DataRequired()])
+    slug = StringField("Slug", validators=[DataRequired()])
+    submit = SubmitField("Submit")
 
 #Create a model (defines what is saved in the database)
 class Users(db.Model):
@@ -248,6 +260,101 @@ def delete(id):
         flash("Whoops! There was a problem deleting the user, try again.")
         #Pass in id so that id can be accessed in the html page
         return render_template("add_user.html", form=form, name=name, our_users=our_users)
+    
+# Add a posts page
+@app.route('/add-post', methods=['GET', 'POST'])
+def add_post():
+    form = PostForm()
+    if form.validate_on_submit():
+        # If the data in the form has been validated and submitted, collect the data in the form to be added to the database
+        post = Posts(title=form.title.data, content=form.content.data, author=form.author.data, slug=form.slug.data)
+        # Redirect back to the form page after submission, and clear all fields
+        form.title.data = ''
+        form.content.data = ''
+        form.author.data = ''
+        form.slug.data = ''
+        # Add the data in the form to the database
+        db.session.add(post)
+        db.session.commit()
+
+        # Add a flash message telling the user the data was submitted successfully
+        flash("Blog Post Submitted Successfully")
+    # Redirect to the webpage
+    return render_template("add_post.html", form=form)
+
+# Make page to display blog posts
+@app.route('/posts')
+def posts():
+    # Grab all posts from the database, ordered by posting date
+    posts = Posts.query.order_by(Posts.date_posted)
+    return render_template("posts.html", posts=posts)
+
+# Make page to display individual blog posts
+# Use the id number of each post to reference the specific blog post of interest
+@app.route('/posts/<int:id>')
+def post(id):
+    # Pass in a query that looks up specific blog post in the database using the given id. If the post isn't found, return 404 error
+    post = Posts.query.get_or_404(id)
+    return render_template('post.html', post=post)
+
+# Make a page to edit blog posts
+# Use the id number of each post to reference the specific blog post of interest
+@app.route('/posts/edit/<int:id>', methods=['GET', 'POST'])
+def edit_post(id):
+    # Pass in a query that looks up specific blog post in the database using the given id. If the post isn't found, return 404 error
+    post = Posts.query.get_or_404(id)
+    form = PostForm()
+    if form.validate_on_submit():
+        # Commit the (updated) post title, author, etc. to the database 
+        post.title = form.title.data
+        post.author = form.author.data
+        post.slug = form.slug.data
+        post.content = form.content.data
+        
+        # Update the database
+        db.session.add(post)
+        db.session.commit()
+
+        # Return message to tell user about successful update
+        flash("Post has been successfully updated!")
+
+        # Return back to the individual blog post page
+        return redirect(url_for('post', id=post.id))
+    # Show update post page
+    form.title.data = post.title
+    form.author.data = post.author
+    form.slug.data = post.slug
+    form.content.data = post.content
+    return render_template('edit_post.html', form=form)
+
+# Create page to delete posts
+# Use the id number of each post to reference the specific blog post of interest
+@app.route('/posts/delete/<int:id>')
+def delete_post(id):
+    post_to_delete = Posts.query.get_or_404(id)
+
+    try:
+        # Try to delete post
+        db.session.delete(post_to_delete)
+        db.session.commit()
+
+        # Send user message about deleting
+        flash("Blog post was deleted!")
+
+        # Redirect user to main blog posts page
+        # Grab all posts from the database, ordered by posting date
+        posts = Posts.query.order_by(Posts.date_posted)
+        return render_template("posts.html", posts=posts)
+    except:
+        # If the deleting doesn't work and something goes wrong, return error message
+        flash("Whoops! There was a problem deleting the post, try again.")
+
+        # Redirect user to main blog posts page
+        # Grab all posts from the database, ordered by posting date
+        posts = Posts.query.order_by(Posts.date_posted)
+        return render_template("posts.html", posts=posts)
+
+
 
 #Create custom error pages
 #Invalid URL page

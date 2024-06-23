@@ -1,0 +1,38 @@
+<!-- Tell code to use the base.html file -->
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!-- Tell flask where the flash message should pop up -->
+<!-- Loop through messages (because there may be multiple that we want to display -->
+ {% for message in get_flashed_messages() %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+ {% endfor %}
+
+<h1>Blog Posts</h1>
+<br/>
+
+<!-- For loop to print out all posts -->
+{% for post in posts %}
+<div class="shadow p-3 mb-5 bg-body-tertiary rounded">
+<!-- Print out all post information (as referenced from the database (note the use of variables from the database)) -->
+    <h2>{{ post.title }}</h2>
+    <small>By: {{ post.author }}<br/>{{ post.date_posted }}<br/><br/></small>
+    {{ post.content }}
+    <br/><br/>
+    <!-- Add button to go to individual post page (get id of post of interest by accessing it via the .id command)-->
+     <a href="{{ url_for('post', id=post.id)}}" class="btn btn-outline-secondary btn-sm">View Post</a>
+     <!-- Add button to edit post (get id of post of interest by accessing it via the .id command)-->
+     <a href="{{ url_for('edit_post', id=post.id)}}" class="btn btn-outline-secondary btn-sm">Edit Post</a>
+     <!-- Add button to delete post (get id of post of interest by accessing it via the .id command)-->
+     <a href="{{ url_for('delete_post', id=post.id)}}" class="btn btn-outline-danger btn-sm">Delete Post</a>
+</div>
+<br/>
+
+
+{% endfor %}
+    
+{% endblock %}
