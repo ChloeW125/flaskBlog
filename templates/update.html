@@ -12,19 +12,11 @@
     </div>
  {% endfor %}
 
-<!-- If the name var exists,  execute the following -->
-{% if name %}
-<h1>Update User</h1>
-<table class="table table-hover table-bordered table-striped">
-    {% for our_user in our_users %}
-    <tr>
-        <td>{{ our_user.id }}. {{ our_user.name }} - {{ our_user.email }} - {{ our_user.favourite_colour }} </td>
-    </tr>
-{% endfor %}
+<!-- Make sure that the id that you want to update matches the current user logged-in (i.e. you can't update the id of other users) -->
+<!-- Id is passed into this file from the update() function and the flask login packages respectfully -->
+ <!-- If the ids match, you can edit the user -->
+ {% if id == current_user.id %}
 
-</table>
-
-{% else %}
     <h1>Update User</h1>
     <br/>
     <!-- Styling -->
@@ -39,6 +31,11 @@
         {{ form.name.label(class="form-label") }}
         <!-- Fill up form automatically with previous user information by giving the input a pre-existing value (which is the previous user info) -->
         {{ form.name(class="form-control", value=name_to_update.name) }}
+        <br/>
+
+        {{ form.username.label(class="form-label") }}
+        <!-- Fill up form automatically with previous user information by giving the input a pre-existing value (which is the previous user info) -->
+        {{ form.username(class="form-control", value=name_to_update.username) }}
         <br/>
 
         {{ form.email.label(class="form-label") }}
@@ -63,7 +60,16 @@
 
 </table>
 
-{% endif %}
+<!-- Else, you cannot edit the user (because that user is not you!) -->
+{% else %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    Sorry, you can't edit this user
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
 
+<h2>Access Denied!</h2>
+<p>Sorry, you cannot edit this user profile</p>
+
+{% endif %}
 
 {% endblock %}

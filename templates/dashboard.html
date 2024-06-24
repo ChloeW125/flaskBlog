@@ -32,10 +32,48 @@
         <strong>Date Joined:</strong> {{ current_user.date_added }}<br/>
       </p>
       <a href="{{ url_for('logout') }}" class="btn btn-secondary btm-sm">Logout</a>
+      <a href="{{ url_for('update', id=current_user.id) }}" class="btn btn-secondary btm-sm">Update Profile</a>
+      <a href="{{ url_for('delete', id=current_user.id) }}" class="btn btn-danger btm-sm">Delete Profile</a>
     </div>
   </div>
 
 <br/><br/>
 
+<div class="card">
+  <div class="card-header">
+      Update Profile
+  </div>
+  <div class="card-body">
+    <!-- Make sure url of form changes according to the number of the user that was clicked on -->
+    <form action="/dashboard" method="POST">
+        <!-- Created CSRF token -->
+        {{ form.hidden_tag() }}
+
+        <!-- Add label for the name field -->
+        {{ form.name.label(class="form-label") }}
+        <!-- Fill up form automatically with previous user information by giving the input a pre-existing value (which is the previous user info) -->
+        {{ form.name(class="form-control", value=name_to_update.name) }}
+        <br/>
+
+        {{ form.username.label(class="form-label") }}
+        <!-- Fill up form automatically with previous user information by giving the input a pre-existing value (which is the previous user info) -->
+        {{ form.username(class="form-control", value=name_to_update.username) }}
+        <br/>
+
+        {{ form.email.label(class="form-label") }}
+        <!-- Fill up form automatically with previous user information by giving the input a pre-existing value (which is the previous user info) -->
+        {{ form.email(class="form-control", value=name_to_update.email) }}
+        <br/>
+
+        {{ form.favourite_colour.label(class="form-label") }}
+        <!-- Fill up form automatically with previous user information by giving the input a pre-existing value (which is the previous user info) -->
+        {{ form.favourite_colour(class="form-control", value=name_to_update.favourite_colour) }}
+        <br/>
+
+        <!-- Add the submit button -->
+        <!-- Double check -->
+        {{ form.submit(class="btn btn-secondary btn-sm") }}
+    </form>
+  </div>
 
 {% endblock %}

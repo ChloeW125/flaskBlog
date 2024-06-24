@@ -1,14 +1,19 @@
 from flask import Flask, render_template, flash, request, redirect, url_for
+from flask_wtf import FlaskForm
+#Import fields to be able to build form
+from wtforms import StringField, SubmitField, PasswordField, BooleanField, ValidationError
+#Import validators to validate the string input (this validator in particular will validate the string)
+from wtforms.validators import DataRequired, EqualTo, Length
 #Import db and datetime so we can track the time of every entry
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from datetime import datetime, date
 #Import werkzeug to hash passwords
 from werkzeug.security import generate_password_hash, check_password_hash
+# Import widgets for the forms
+from wtforms.widgets import TextArea
 # Import tools for login
 from flask_login import UserMixin, login_user, LoginManager, login_required, logout_user, current_user
-# Import forms into app.py
-from webforms import LoginForm, PostForm, UserForm, NamerForm, PasswordForm
 
 #Create a flask instance
 #Create extension to the db
@@ -47,13 +52,20 @@ class Posts(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255))
     content = db.Column(db.Text)
-    # author = db.Column(db.String(255))
+    author = db.Column(db.String(255))
     date_posted = db.Column(db.DateTime, default=datetime.now())
     # Slug will adjust text in url for each blog post
     slug = db.Column(db.String(255))
-    # Associate each post to a specific user (the one who made the post) by creating a foreign key to link users (the foreign key will refer to the primary key of the user (i.e. the user's id))
-    # Link each post to a poster via user ids
-    poster_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+
+# Create a posts form
+class PostForm(FlaskForm):
+    # Fields in the form
+    title = StringField("Title", validators=[DataRequired()])
+    # TextArea widget to make large text box for content
+    content = StringField("Content", validators=[DataRequired()], widget=TextArea())
+    author = StringField("Author", validators=[DataRequired()])
+    slug = StringField("Slug", validators=[DataRequired()])
+    submit = SubmitField("Submit")
 
 #Create a model (defines what is saved in the database)
 class Users(db.Model, UserMixin):
@@ -67,9 +79,6 @@ class Users(db.Model, UserMixin):
     date_added = db.Column(db.DateTime, default=datetime.now)
     #Implement password input section for input
     password_hash = db.Column(db.String(128))
-    # Allow users to have many posts
-    # Backref will keep track of the poster for posts
-    posts = db.relationship('Posts', backref='poster')
 
     #Create password properties
     #Create functions to hash password and check hash to make sure that it matches up with the password
@@ -91,6 +100,36 @@ class Users(db.Model, UserMixin):
     #Create a string to define what will show up on the screen
     def __repr__(self):
         return '<Name %r>' % self.name
+
+#Create a user form class
+class UserForm(FlaskForm):
+    #Define the fields that we want using vars
+    name = StringField("Name", validators=[DataRequired()])
+    username = StringField("Username", validators=[DataRequired()])
+    email = StringField("Email", validators=[DataRequired()])
+    favourite_colour = StringField("Favourite Colour")
+    password_hash = PasswordField('Password', validators=[DataRequired(), EqualTo('password_hash2', message='Passwords must match!')])
+    password_hash2 = PasswordField('Confirm Password', validators=[DataRequired()])
+    submit = SubmitField("Submit")
+
+#Create name form class
+class NamerForm(FlaskForm):
+    #Define the fields that we want using vars
+    name = StringField("What's Your Name", validators=[DataRequired()])
+    submit = SubmitField("Submit")
+
+#Create password form class
+class PasswordForm(FlaskForm):
+    #Define the fields that we want using vars
+    email = StringField("What's Your Email?", validators=[DataRequired()])
+    password_hash = PasswordField("What's Your Password?", validators=[DataRequired()])
+    submit = SubmitField("Submit")
+
+# Create a login form
+class LoginForm(FlaskForm):
+    username = StringField("Username", validators=[DataRequired()])
+    password = PasswordField("Password", validators=[DataRequired()])
+    submit = SubmitField("Submit")
 
 #Create table for db
 with app.app_context():
@@ -197,7 +236,6 @@ def test_pw():
 # Create new page to update database records
 # Pass in the id of the entry we want to update
 @app.route('/update/<int:id>', methods=['GET','POST'])
-@login_required
 # Pass in the id that we want to update in the function
 def update(id):
     # Create a form to update user info
@@ -252,14 +290,12 @@ def delete(id):
 def add_post():
     form = PostForm()
     if form.validate_on_submit():
-        # Collect id of the poster and store under poster var
-        poster = current_user.id
         # If the data in the form has been validated and submitted, collect the data in the form to be added to the database
-        post = Posts(title=form.title.data, content=form.content.data, poster_id=poster, slug=form.slug.data)
+        post = Posts(title=form.title.data, content=form.content.data, author=form.author.data, slug=form.slug.data)
         # Redirect back to the form page after submission, and clear all fields
         form.title.data = ''
         form.content.data = ''
-        # form.author.data = ''
+        form.author.data = ''
         form.slug.data = ''
         # Add the data in the form to the database
         db.session.add(post)
@@ -294,10 +330,10 @@ def edit_post(id):
     # Pass in a query that looks up specific blog post in the database using the given id. If the post isn't found, return 404 error
     post = Posts.query.get_or_404(id)
     form = PostForm()
-    # If form is submitted and validated, then commit the (updated) post title, author, etc. to the database 
     if form.validate_on_submit():
+        # Commit the (updated) post title, author, etc. to the database 
         post.title = form.title.data
-        # post.author = form.author.data
+        post.author = form.author.data
         post.slug = form.slug.data
         post.content = form.content.data
         
@@ -310,64 +346,39 @@ def edit_post(id):
 
         # Return back to the individual blog post page
         return redirect(url_for('post', id=post.id))
-    # Only allow users to go to the edit page if they are logged in as the poster
-    if current_user.id == post.poster_id:
-        # Show update post page
-        form.title.data = post.title
-        # form.author.data = post.author
-        form.slug.data = post.slug
-        form.content.data = post.content
-        return render_template('edit_post.html', form=form)
-    # Else return error message
-    else:
-        flash("You aren't authorized to edit this post")
-        # Redirect to the posts page
-        # Grab all posts from the database, ordered by posting date
-        posts = Posts.query.order_by(Posts.date_posted)
-        return render_template("posts.html", posts=posts)
+    # Show update post page
+    form.title.data = post.title
+    form.author.data = post.author
+    form.slug.data = post.slug
+    form.content.data = post.content
+    return render_template('edit_post.html', form=form)
 
 # Create page to delete posts
 # Use the id number of each post to reference the specific blog post of interest
 @app.route('/posts/delete/<int:id>')
-# Only able to delete if you are logged in
-@login_required
 def delete_post(id):
     post_to_delete = Posts.query.get_or_404(id)
-    # Set var equal to user that is currently logged in
-    id = current_user.id
 
-    # If the id of the user who made this post matches the id of the user that is currently logged in, allow the user to delete the post
-    if id == post_to_delete.poster.id:
-        try:
-            # Try to delete post
-            db.session.delete(post_to_delete)
-            db.session.commit()
+    try:
+        # Try to delete post
+        db.session.delete(post_to_delete)
+        db.session.commit()
 
-            # Send user message about deleting
-            flash("Blog post was deleted!")
+        # Send user message about deleting
+        flash("Blog post was deleted!")
 
-            # Redirect user to main blog posts page
-            # Grab all posts from the database, ordered by posting date
-            posts = Posts.query.order_by(Posts.date_posted)
-            return render_template("posts.html", posts=posts)
+        # Redirect user to main blog posts page
+        # Grab all posts from the database, ordered by posting date
+        posts = Posts.query.order_by(Posts.date_posted)
+        return render_template("posts.html", posts=posts)
+    except:
+        # If the deleting doesn't work and something goes wrong, return error message
+        flash("Whoops! There was a problem deleting the post, try again.")
 
-        except:
-            # If the deleting doesn't work and something goes wrong, return error message
-            flash("Whoops! There was a problem deleting the post, try again.")
-
-            # Redirect user to main blog posts page
-            # Grab all posts from the database, ordered by posting date
-            posts = Posts.query.order_by(Posts.date_posted)
-            return render_template("posts.html", posts=posts)
-    # Else user is not able to delete the post
-    else:
-        # Send user error message about deleting
-            flash("You aren't authorized to delete this post!")
-
-            # Redirect user to main blog posts page
-            # Grab all posts from the database, ordered by posting date
-            posts = Posts.query.order_by(Posts.date_posted)
-            return render_template("posts.html", posts=posts)
+        # Redirect user to main blog posts page
+        # Grab all posts from the database, ordered by posting date
+        posts = Posts.query.order_by(Posts.date_posted)
+        return render_template("posts.html", posts=posts)
 
 # Create login page
 @app.route('/login', methods=['GET', 'POST'])
