@@ -18,10 +18,27 @@
             <!-- Use double brackets to go back to the user profile page when this title is clicked on (by referencing the user function) -->
             <a class="nav-link" href="{{url_for('name')}}">Name</a>
           </li>
-          <li class="nav-item">
-            <!-- Use double brackets to go back to the user profile page when this title is clicked on (by referencing the user function) -->
-            <a class="nav-link" href="{{url_for('add_user')}}">Add User</a>
-          </li>
+          <!-- Use jinja to determine if user is logged in or logged out. Display appropriate name on nav bar accordingly -->
+          {% if current_user.is_authenticated %}
+            <li class="nav-item">
+              <!-- Use double brackets to go back to the user profile page when this title is clicked on (by referencing the user function) -->
+              <a class="nav-link" href="{{url_for('dashboard')}}">Dashboard</a>
+            </li>
+            <li class="nav-item">
+              <!-- Use double brackets to go back to the user profile page when this title is clicked on (by referencing the user function) -->
+              <a class="nav-link" href="{{url_for('logout')}}">Logout</a>
+            </li>
+          {% else %}
+          <!-- User register page will only show up if not logged in -->
+            <li class="nav-item">
+              <!-- Use double brackets to go back to the user profile page when this title is clicked on (by referencing the user function) -->
+              <a class="nav-link" href="{{url_for('add_user')}}">Register</a>
+            </li>
+            <li class="nav-item">
+              <!-- Use double brackets to go back to the user profile page when this title is clicked on (by referencing the user function) -->
+              <a class="nav-link" href="{{url_for('login')}}">Login</a>
+            </li>
+          {% endif %}
           <li class="nav-item">
             <!-- Use double brackets to go back to the user profile page when this title is clicked on (by referencing the user function) -->
             <a class="nav-link" href="{{url_for('add_post')}}">Add Blog Post</a>

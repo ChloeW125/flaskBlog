@@ -12,10 +12,9 @@
     </div>
  {% endfor %}
 
- <!-- Add condition: only if the user is authenticated/logged in then they can add blog posts -->
- {% if current_user.is_authenticated %}
- <h1>Add Blog Post</h1>
-    <br/>
+<!-- If the name var exists,  execute the following -->
+<h1>Login!</h1>
+
     <!-- Styling -->
     <div class="shadow p-3 mb-5 bg-body-tertiary rounded">
     <!-- Add the form into the page -->
@@ -23,22 +22,12 @@
         <!-- Created CSRF token -->
         {{ form.hidden_tag() }}
 
-        <!-- Add label for the name field -->
-        {{ form.title.label(class="form-label") }}
-        {{ form.title(class="form-control") }}
+        {{ form.username.label(class="form-label") }}
+        {{ form.username(class="form-control") }}
         <br/>
 
-        {{ form.author.label(class="form-label") }}
-        {{ form.author(class="form-control") }}
-        <br/>
-
-        {{ form.slug.label(class="form-label") }}
-        <!-- Rows controls how big the textbox is -->
-        {{ form.slug(class="form-control") }}
-        <br/>
-
-        {{ form.content.label(class="form-label") }}
-        {{ form.content(class="form-control", rows='10') }}
+        {{ form.password.label(class="form-label") }}
+        {{ form.password(class="form-control") }}
         <br/>
 
         <!-- Add the submit button -->
@@ -46,11 +35,8 @@
 
     </form>
 </div>
-{% else %}
-<h2>Must be logged in</h2>
-<p>Sorry, you must be logged in to access this page!</p>
-<a href="{{ url_for('login') }}">Login here</a>
 
-{% endif %}
+<br/><br/><br/>
+
 
 {% endblock %}

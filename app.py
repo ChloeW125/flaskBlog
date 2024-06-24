@@ -12,6 +12,8 @@ from datetime import datetime, date
 from werkzeug.security import generate_password_hash, check_password_hash
 # Import widgets for the forms
 from wtforms.widgets import TextArea
+# Import tools for login
+from flask_login import UserMixin, login_user, LoginManager, login_required, logout_user, current_user
 
 #Create a flask instance
 #Create extension to the db
@@ -31,6 +33,18 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:56y32888@localhost
 db.init_app(app)
 #Migrate app with database
 migrate = Migrate(app, db)
+
+# Flask login stuff
+# Instantiates login tools
+login_manager = LoginManager()
+# Pass in this app into the login manager so it knows what to work with
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+# Load info from database into the login manager so the login manager can use the data
+@login_manager.user_loader
+def load_user(user_id):
+    return Users.query.get(int(user_id))
 
 # Create a blog post model
 class Posts(db.Model):
@@ -54,10 +68,11 @@ class PostForm(FlaskForm):
     submit = SubmitField("Submit")
 
 #Create a model (defines what is saved in the database)
-class Users(db.Model):
+class Users(db.Model, UserMixin):
     #Keep track of id (since everyone has a unique id, will make it easy to delete specific entries later), name, email, and date added
     #Define data type in each column in the brackets, specify validation + features for each column
     id = db.Column(db.Integer, primary_key = True) #By using primary keys, each entry will automatically be assigned a unique id, which is exactly what we want
+    username = db.Column(db.String(20), nullable=False, unique=True)
     name = db.Column(db.String(200), nullable=False) #Nullable=false means that the value for the name var cannot be empty
     email = db.Column(db.String(120), nullable=False, unique=True) #Set unique as true because we want everyone to have a unique email
     favourite_colour = db.Column(db.String(120))
@@ -90,6 +105,7 @@ class Users(db.Model):
 class UserForm(FlaskForm):
     #Define the fields that we want using vars
     name = StringField("Name", validators=[DataRequired()])
+    username = StringField("Username", validators=[DataRequired()])
     email = StringField("Email", validators=[DataRequired()])
     favourite_colour = StringField("Favourite Colour")
     password_hash = PasswordField('Password', validators=[DataRequired(), EqualTo('password_hash2', message='Passwords must match!')])
@@ -107,6 +123,12 @@ class PasswordForm(FlaskForm):
     #Define the fields that we want using vars
     email = StringField("What's Your Email?", validators=[DataRequired()])
     password_hash = PasswordField("What's Your Password?", validators=[DataRequired()])
+    submit = SubmitField("Submit")
+
+# Create a login form
+class LoginForm(FlaskForm):
+    username = StringField("Username", validators=[DataRequired()])
+    password = PasswordField("Password", validators=[DataRequired()])
     submit = SubmitField("Submit")
 
 #Create table for db
@@ -140,12 +162,13 @@ def add_user():
         if user is None:
             #Hash the password submitted to the form
             hashed_pw = generate_password_hash(form.password_hash.data, "pbkdf2:sha256:600000")
-            user = Users(name=form.name.data, email=form.email.data, favourite_colour=form.favourite_colour.data, password_hash=hashed_pw)
+            user = Users(username=form.username.data, name=form.name.data, email=form.email.data, favourite_colour=form.favourite_colour.data, password_hash=hashed_pw)
             db.session.add(user)
             db.session.commit()
         #Pass the inputted name as a var into the function so it's value can be used later
         name = form.name.data
         #Clear the form
+        form.username.data = ''
         form.name.data = ''
         form.email.data = ''
         form.favourite_colour.data = ''
@@ -300,6 +323,8 @@ def post(id):
 # Make a page to edit blog posts
 # Use the id number of each post to reference the specific blog post of interest
 @app.route('/posts/edit/<int:id>', methods=['GET', 'POST'])
+# Add decorator so that only logged-in users can access this page
+@login_required
 def edit_post(id):
     # Pass in a query that looks up specific blog post in the database using the given id. If the post isn't found, return 404 error
     post = Posts.query.get_or_404(id)
@@ -354,7 +379,46 @@ def delete_post(id):
         posts = Posts.query.order_by(Posts.date_posted)
         return render_template("posts.html", posts=posts)
 
+# Create login page
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        # Database will grab first (and only because usernames should be unique) user that exists in the form with the given username. There should be a username that is grabbed if the data is indeed valid
+        user = Users.query.filter_by(username=form.username.data).first()
+        # If the user exists, check the hash to make sure the password inputted is the correct password
+        if user:
+            # User.password_hash is the thing in the database, form.password.data is the thing we typed in - here we are checking if the passwords match
+            if check_password_hash(user.password_hash, form.password.data):
+                # Then, this mean that the user has been logged in. They can now be sent to the dashboard
+                login_user(user)
+                flash("Login successful!")
+                return redirect(url_for('dashboard'))
+            # Else the password was wrong, throw an error message
+            else:
+                flash("Wrong password, try again")
+        # If there isn't a user, throw an error message
+        else:
+            flash("That user doesn't exist, try again")
 
+    return render_template('login.html', form=form)
+
+# Create logout page/function
+@app.route('/logout', methods=['GET', 'POST'])
+# Need to login in order to be able to logout
+@login_required
+def logout():
+    logout_user()
+    flash("You have been logged out! Thanks for stopping by!")
+    # Return user back to login page
+    return redirect(url_for('login'))
+
+# Create dashboard page
+@app.route('/dashboard', methods=['GET', 'POST'])
+# Creates a "barrier" where the user needs to login in order to go to the dashboard
+@login_required
+def dashboard():
+    return render_template('dashboard.html')
 
 #Create custom error pages
 #Invalid URL page
