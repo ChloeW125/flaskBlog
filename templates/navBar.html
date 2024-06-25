@@ -24,6 +24,15 @@
               <!-- Use double brackets to go back to the user profile page when this title is clicked on (by referencing the user function) -->
               <a class="nav-link" href="{{url_for('dashboard')}}">Dashboard</a>
             </li>
+            
+            <!-- Only display Admin tab on screen if the admin has logged in (admin has an ID of 20) -->
+            {% if current_user.id == 20 %}
+            <li class="nav-item">
+              <!-- Use double brackets to go back to the user profile page when this title is clicked on (by referencing the user function) -->
+              <a class="nav-link" href="{{url_for('admin')}}">Admin</a>
+            </li>
+            {% endif %}
+            
             <li class="nav-item">
               <!-- Use double brackets to go back to the user profile page when this title is clicked on (by referencing the user function) -->
               <a class="nav-link" href="{{url_for('logout')}}">Logout</a>
@@ -59,8 +68,10 @@
             </ul>
           </li> -->
         </ul>
-        <form class="d-flex" role="search">
-          <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
+        <form method="POST" action="{{ url_for('search') }}" class="d-flex" role="search">
+          <!-- Add a CSRF token to prevent the form from being hijacked by hackers -->
+           {{ form.hidden_tag() }}
+          <input class="form-control me-2" type="search" placeholder="Search by Content" aria-label="Search", name="searched">
           <button class="btn btn-outline-success" type="submit">Search</button>
         </form>
       </div>

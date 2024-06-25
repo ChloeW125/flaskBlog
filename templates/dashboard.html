@@ -21,20 +21,32 @@
         {{ current_user.name }}
     </div>
     <div class="card-body">
-      <h5 class="card-title">Welcome to your user dashboard!</h5>
       <p class="card-text">
+        <!-- Format/position profile pic -->
+        <div class="container">
+          <div class="row">
+            <div class="col-8">
         <!-- Add info from database to personalize dashboard (using flask login features) -->
         <strong>Name:</strong> {{ current_user.name }}<br/>
         <strong>Username:</strong> {{ current_user.username }}<br/>
         <strong>User Id:</strong> {{ current_user.id }}<br/>
         <strong>Email:</strong> {{ current_user.email }}<br/>
         <strong>Favourite Colour:</strong> {{ current_user.favourite_colour }}<br/>
+        <strong>About the Author:</strong> {{ current_user.about_author }}<br/>
+        <strong>Profile Pic:</strong> {{ current_user.profile_pic }}<br/>
         <strong>Date Joined:</strong> {{ current_user.date_added }}<br/>
       </p>
       <a href="{{ url_for('logout') }}" class="btn btn-secondary btm-sm">Logout</a>
       <a href="{{ url_for('update', id=current_user.id) }}" class="btn btn-secondary btm-sm">Update Profile</a>
-      <a href="{{ url_for('delete', id=current_user.id) }}" class="btn btn-danger btm-sm">Delete Profile</a>
+      <a href="{{ url_for('delete', id=current_user.id) }}" class="btn btn-danger btm-sm">Delete Profile</a> <br/><br/>
     </div>
+    <div class="col-4">
+      <!-- Default pfp -->
+      <img src="{{ url_for('static', filename='images/defaultpfp.png')}}" width="200" align="right">
+    </div>
+    </div>
+  </div>
+</div>
   </div>
 
 <br/><br/>
@@ -45,7 +57,8 @@
   </div>
   <div class="card-body">
     <!-- Make sure url of form changes according to the number of the user that was clicked on -->
-    <form action="/dashboard" method="POST">
+     <!-- enctype allows for files and images (and multiple data types generally) to be added to the form -->
+    <form action="/dashboard" method="POST" enctype="multipart/form-data">
         <!-- Created CSRF token -->
         {{ form.hidden_tag() }}
 
@@ -68,6 +81,12 @@
         {{ form.favourite_colour.label(class="form-label") }}
         <!-- Fill up form automatically with previous user information by giving the input a pre-existing value (which is the previous user info) -->
         {{ form.favourite_colour(class="form-control", value=name_to_update.favourite_colour) }}
+        <br/>
+
+        {{ form.about_author.label(class="form-label") }}
+        <!-- Fill up form automatically with previous user information by giving the input a pre-existing value (which is the previous user info) -->
+        <!-- Add the pre-existing about author text to the dashboard page -->
+        <textarea name="about_author" class="form-control">{{ name_to_update.about_author }}</textarea>
         <br/>
 
         <!-- Add the submit button -->

@@ -8,13 +8,23 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # Import tools for login
 from flask_login import UserMixin, login_user, LoginManager, login_required, logout_user, current_user
 # Import forms into app.py
-from webforms import LoginForm, PostForm, UserForm, NamerForm, PasswordForm
+from webforms import LoginForm, PostForm, UserForm, NamerForm, PasswordForm, SearchForm
+# Import rich text editor to initialize the extension
+from flask_ckeditor import CKEditor
+
+# Source(s) for the robot avatar image: <a href="https://www.flaticon.com/free-icons/robot" title="robot icons">Robot icons created by Freepik - Flaticon</a>
+# <a href="https://www.flaticon.com/free-icons/robot" title="robot icons">Robot icons created by Freepik - Flaticon</a>
+# <a href="https://www.flaticon.com/free-icons/robot" title="robot icons">Robot icons created by Smashicons - Flaticon</a>
+# <a href="https://www.flaticon.com/free-icons/robot" title="robot icons">Robot icons created by Freepik - Flaticon</a>
+# <a href="https://www.flaticon.com/free-icons/bot" title="bot icons">Bot icons created by Smashicons - Flaticon</a>
 
 #Create a flask instance
 #Create extension to the db
 db = SQLAlchemy()
 #__name__ helps flask find files in the directory
 app = Flask(__name__)
+# Add CKEditor
+ckeditor = CKEditor(app)
 #Create a secret key (to create a CRSF token) for the form to make sure that hackers cannot hijack the form
 app.config['SECRET_KEY'] = "56y32888"
 #Add the databaase to the app (where URI points to where our database is) 
@@ -40,7 +50,6 @@ login_manager.login_view = 'login'
 @login_manager.user_loader
 def load_user(user_id):
     return Users.query.get(int(user_id))
-
 # Create a blog post model
 class Posts(db.Model):
     # Define what to save in this model
@@ -64,7 +73,10 @@ class Users(db.Model, UserMixin):
     name = db.Column(db.String(200), nullable=False) #Nullable=false means that the value for the name var cannot be empty
     email = db.Column(db.String(120), nullable=False, unique=True) #Set unique as true because we want everyone to have a unique email
     favourite_colour = db.Column(db.String(120))
+    about_author = db.Column(db.Text(500), nullable=True)
     date_added = db.Column(db.DateTime, default=datetime.now)
+    # ISSUE: # String used to save the NAME of the photo
+    # profile_pic = db.Column(db.String(), nullable=True)
     #Implement password input section for input
     password_hash = db.Column(db.String(128))
     # Allow users to have many posts
@@ -99,7 +111,6 @@ with app.app_context():
 #Create a route so that the website (specifically the home page) can be accessed (via URL) 
 @app.route('/')
 #Create function to define the home page
-
 def index():
     #Create new variable, then pass in this variable to the template to be used to be displayed
     first_name = "Chloe"
@@ -108,6 +119,20 @@ def index():
     pizza = ["Pepperoni", "Cheese", 41]
     #Program will go to the template folder and find the right file to display
     return render_template("index.html", first_name=first_name, stuff=stuff, pizza=pizza)
+
+#Create admin page 
+@app.route('/admin')
+@login_required
+def admin():
+    # Set var id equal to the current id
+    id = current_user.id
+    
+    # Only users with the admin ID (which is set to 20 for this example) are able to access the admin page
+    if id == 20:
+        return render_template("admin.html")
+    else:
+        flash("Sorry you must be the Admin to access the Admin page")
+        return redirect(url_for('dashboard'))
 
 @app.route('/user/add', methods=['GET', 'POST'])
 def add_user():
@@ -419,7 +444,9 @@ def dashboard():
         name_to_update.name = request.form['name']
         name_to_update.email = request.form['email']
         name_to_update.favourite_colour = request.form['favourite_colour']
+        name_to_update.about_author = request.form['about_author']
         name_to_update.username = request.form['username']
+        # name_to_update.profile_pic = request.files['profile_pic']
         # Try to update info in database. If it doesn't work, then return an error message
         try:
             db.session.commit()
@@ -433,6 +460,31 @@ def dashboard():
         return render_template("dashboard.html", form=form, name_to_update=name_to_update, id=id) 
     
     return render_template('dashboard.html')
+
+# Pass info to navBar
+#context_processor will pass things into base file
+@app.context_processor
+def base():
+    form = SearchForm()
+    # Return dictionary to pass form to the base.html file and then to the navBar (because the base.html file includes the navBar)
+    return dict(form=form)
+
+# Create search functionality
+@app.route('/search', methods=['GET', 'POST'])
+def search():
+    form = SearchForm()
+    # Look for posts
+    posts = Posts.query
+    
+    # If form was submitted, 
+    if form.validate_on_submit:
+        # Get data from the submitted form
+        post.searched = form.searched.data
+        # Query the database (look for similar content entries)
+        posts = posts.filter(Posts.content.like('%' + post.searched + '%'))
+        # Return all posts that meet this criteria. Store these posts in the (updated) var 'posts'
+        posts = posts.order_by(Posts.title).all()
+        return render_template("search.html", form=form, searched=post.searched, posts=posts)
 
 #Create custom error pages
 #Invalid URL page

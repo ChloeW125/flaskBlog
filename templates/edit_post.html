@@ -12,7 +12,7 @@
     </div>
  {% endfor %}
 
-<h1>Blog Posts</h1>
+<h2>Edit Post</h2>
 <br/>
 
 <div class="shadow p-3 mb-5 bg-body-tertiary rounded">
@@ -38,6 +38,11 @@
         {{ form.submit(class="btn btn-secondary") }}
 
     </form>
+
+    <!-- Load the ckeditor attribute into the form -->
+    {{ ckeditor.load() }}
+    {{ ckeditor.config(name='content') }}
+
 </div>
 </div>
 <!-- Add button to go to back to posts page (get id of post of interest by accessing it via the .id command)-->

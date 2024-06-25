@@ -21,7 +21,8 @@
 <!-- Print out all post information (as referenced from the database (note the use of variables from the database)) -->
     <h2>{{ post.title }}</h2>
     <small>By: {{ post.poster.name }}<br/>{{ post.date_posted }}<br/><br/></small>
-    {{ post.content }}
+    <!-- Add safe flag to tell the program that it should directly apply the html from the rich text editor onto the screen -->
+    {{ post.content|safe }}
     <br/><br/>
     <!-- Add button to go to individual post page (get id of post of interest by accessing it via the .id command)-->
     <a href="{{ url_for('post', id=post.id)}}" class="btn btn-outline-secondary btn-sm">View Post</a>
