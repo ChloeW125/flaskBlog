@@ -48,6 +48,12 @@
         {{ form.favourite_colour(class="form-control", value=name_to_update.favourite_colour) }}
         <br/>
 
+        {{ form.about_author.label(class="form-label") }}
+        <!-- Fill up form automatically with previous user information by giving the input a pre-existing value (which is the previous user info) -->
+        <!-- Add the pre-existing about author text to the dashboard page -->
+        <textarea name="about_author" class="form-control">{{ name_to_update.about_author }}</textarea>
+        <br/>
+
         <!-- Add the submit button -->
         <!-- Double check -->
         {{ form.submit(class="btn btn-secondary") }}

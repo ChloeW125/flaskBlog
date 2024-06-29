@@ -127,8 +127,8 @@ def admin():
     # Set var id equal to the current id
     id = current_user.id
     
-    # Only users with the admin ID (which is set to 20 for this example) are able to access the admin page
-    if id == 20:
+    # Only users with the admin ID (which is set to 23 for this example) are able to access the admin page
+    if id == 23:
         return render_template("admin.html")
     else:
         flash("Sorry you must be the Admin to access the Admin page")
@@ -234,6 +234,7 @@ def update(id):
         name_to_update.name = request.form['name']
         name_to_update.email = request.form['email']
         name_to_update.favourite_colour = request.form['favourite_colour']
+        name_to_update.about_author = request.form['about_author']
         name_to_update.username = request.form['username']
         # Try to update info in database. If it doesn't work, then return an error message
         try:
@@ -249,28 +250,37 @@ def update(id):
 
 #Create route to delete user entries
 @app.route('/delete/<int:id>')  
+# Users need to login if they want to delete users
+@login_required
 def delete(id):
-    name = None
-    #Create a form to pass into the display using the UserForm class created earlier
-    form = UserForm()
-    #Look for user with selected id in database
-    user_to_delete = Users.query.get_or_404(id)
+    # Compare user id with id of the user that user wants to delete. If they are the same, or if the user id is that of the admin (i.e. 23) then the user can delete the id. Else, they cannot
+    if id == current_user.id or current_user.id == 23:
+        name = None
+        #Create a form to pass into the display using the UserForm class created earlier
+        form = UserForm()
+        #Look for user with selected id in database
+        user_to_delete = Users.query.get_or_404(id)
 
-    #Delete the record from the database
-    try:
-        db.session.delete(user_to_delete)
-        #Commit change to database
-        db.session.commit()
-        #Pop-up flash message
-        flash("User deleted successfully!")
-        #Return back to page
-        our_users = Users.query.order_by(Users.date_added)
-        return render_template("add_user.html", form=form, name=name, our_users=our_users)
-    #Throw error message if it does not work
-    except:
-        flash("Whoops! There was a problem deleting the user, try again.")
-        #Pass in id so that id can be accessed in the html page
-        return render_template("add_user.html", form=form, name=name, our_users=our_users)
+        #Delete the record from the database
+        try:
+            db.session.delete(user_to_delete)
+            #Commit change to database
+            db.session.commit()
+            #Pop-up flash message
+            flash("User deleted successfully!")
+            #Return back to page
+            our_users = Users.query.order_by(Users.date_added)
+            return render_template("add_user.html", form=form, name=name, our_users=our_users)
+        #Throw error message if it does not work
+        except:
+            flash("Whoops! There was a problem deleting the user, try again.")
+            #Pass in id so that id can be accessed in the html page
+            return render_template("add_user.html", form=form, name=name, our_users=our_users)
+    # Else throw up an error message
+    else:
+        flash("Sorry, you can't delete that user! ")
+        # Redirect the user to dashboard
+        return redirect(url_for('dashboard'))
     
 # Add a posts page
 @app.route('/add-post', methods=['GET', 'POST'])
@@ -335,8 +345,8 @@ def edit_post(id):
 
         # Return back to the individual blog post page
         return redirect(url_for('post', id=post.id))
-    # Only allow users to go to the edit page if they are logged in as the poster
-    if current_user.id == post.poster_id:
+    # Only allow users to go to the edit page if they are logged in as the poster or if they are the admin
+    if current_user.id == post.poster_id or current_user.id == 23:
         # Show update post page
         form.title.data = post.title
         # form.author.data = post.author
@@ -361,8 +371,8 @@ def delete_post(id):
     # Set var equal to user that is currently logged in
     id = current_user.id
 
-    # If the id of the user who made this post matches the id of the user that is currently logged in, allow the user to delete the post
-    if id == post_to_delete.poster.id:
+    # If the id of the user who made this post matches the id of the user that is currently logged in or the user is the admin (i.e. user id of 23), allow the user to delete the post
+    if id == post_to_delete.poster.id or id == 23:
         try:
             # Try to delete post
             db.session.delete(post_to_delete)
